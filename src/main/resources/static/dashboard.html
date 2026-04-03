@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Platform — Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-dark: #1D4ED8;
+            --sidebar-bg: #0F172A;
+            --sidebar-text: #94A3B8;
+            --sidebar-active: #2563EB;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: #F8FAFC; margin: 0; }
+        /* Sidebar */
+        .sidebar {
+            position: fixed; top: 0; left: 0;
+            width: 240px; height: 100vh;
+            background: var(--sidebar-bg);
+            display: flex; flex-direction: column;
+            z-index: 100;
+        }
+        .sidebar-brand {
+            padding: 24px 20px;
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 800;
+            border-bottom: 1px solid #1E293B;
+        }
+        .sidebar-nav { flex: 1; padding: 16px 0; }
+        .sidebar-link {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 20px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-radius: 0;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none; background: none; width: 100%; text-align: left;
+        }
+        .sidebar-link:hover, .sidebar-link.active {
+            background: rgba(37,99,235,0.15);
+            color: #fff;
+        }
+        .sidebar-link.active { border-left: 3px solid var(--primary); }
+        .sidebar-link i { width: 18px; }
+        .sidebar-footer { padding: 16px 20px; border-top: 1px solid #1E293B; }
+        /* Main content */
+        .main-content { margin-left: 240px; min-height: 100vh; }
+        .topbar {
+            background: #fff;
+            padding: 16px 32px;
+            border-bottom: 1px solid #E2E8F0;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 50;
+        }
+        .page-content { padding: 32px; }
+        /* Stats cards */
+        .stat-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #E2E8F0;
+            transition: box-shadow 0.2s;
+        }
+        .stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .stat-icon {
+            width: 48px; height: 48px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+        }
+        .stat-count { font-size: 2rem; font-weight: 700; color: #0F172A; }
+        .stat-label { color: #64748B; font-size: 0.85rem; margin-top: 4px; }
+        /* Status badges */
+        .badge-invited { background: #EFF6FF; color: #2563EB; }
+        .badge-confirmed { background: #F0FDF4; color: #16A34A; }
+        .badge-rescheduled { background: #FFFBEB; color: #D97706; }
+        .badge-cancelled { background: #FEF2F2; color: #DC2626; }
+        .badge-completed { background: #F0F9FF; color: #0284C7; }
+        .badge-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        /* Table */
+        .interview-table th { background: #F8FAFC; color: #475569; font-weight: 600; font-size: 0.82rem; }
+        .interview-table td { vertical-align: middle; font-size: 0.875rem; }
+        /* Buttons */
+        .btn-primary-custom {
+            background: var(--primary); color: #fff; border: none;
+            border-radius: 8px; padding: 10px 20px; font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-primary-custom:hover { background: var(--primary-dark); color: #fff; }
+        /* Modal */
+        .modal-header { background: #F8FAFC; border-bottom: 1px solid #E2E8F0; }
+        /* Section panels */
+        .panel { display: none; }
+        .panel.active { display: block; }
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed; inset: 0;
+            background: rgba(255,255,255,0.8);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+        }
+        .meet-link a { color: var(--primary); font-size: 0.8rem; }
+        .meet-link .btn-meet {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #2563EB; color: #fff; padding: 5px 12px;
+            border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+            text-decoration: none; border: none; cursor: pointer;
+        }
+        .meet-link .btn-meet:hover { background: #1D4ED8; color: #fff; }
+        .meet-link .meet-pending {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 0.75rem; color: #92400E; background: #FEF3C7;
+            padding: 3px 8px; border-radius: 4px;
+        }
+        .ai-stopped-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 0.7rem; color: #6B7280; background: #F3F4F6;
+            padding: 2px 7px; border-radius: 4px; border: 1px solid #D1D5DB;
+        }
+        .btn-stop-ai {
+            background: none; border: 1px solid #D1D5DB; color: #6B7280;
+            border-radius: 5px; padding: 4px 7px; font-size: 0.75rem; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .btn-stop-ai:hover { background: #FEF2F2; border-color: #FCA5A5; color: #DC2626; }
+        @media (max-width: 768px) {
+            .sidebar { width: 0; }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <i class="fas fa-calendar-check me-2"></i>InterviewAI
+    </div>
+    <nav class="sidebar-nav">
+        <button class="sidebar-link active" onclick="showPanel('dashboard')">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </button>
+        <button class="sidebar-link" onclick="showPanel('interviews')">
+            <i class="fas fa-list"></i> All Interviews
+        </button>
+        <button class="sidebar-link" onclick="showPanel('create')">
+            <i class="fas fa-plus-circle"></i> New Interview
+        </button>
+        <button class="sidebar-link" onclick="showPanel('interviewers')">
+            <i class="fas fa-users"></i> Interviewers
+        </button>
+        <button class="sidebar-link" onclick="showPanel('candidates')">
+            <i class="fas fa-user-graduate"></i> Candidates
+        </button>
+    </nav>
+    <div class="sidebar-footer">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center"
+                 style="width:32px;height:32px;">
+                <i class="fas fa-user text-white" style="font-size:0.8rem;"></i>
+            </div>
+            <div>
+                <div class="text-white" style="font-size:0.82rem;font-weight:600;" id="sidebarUsername">HR User</div>
+                <div class="text-muted" style="font-size:0.75rem;">HR Manager</div>
+            </div>
+        </div>
+        <button class="sidebar-link mt-1" onclick="logout()" style="color:#EF4444;">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+    </div>
+</aside>
+
+<!-- Main Content -->
+<div class="main-content">
+    <!-- Topbar -->
+    <div class="topbar">
+        <div>
+            <h5 class="mb-0 fw-bold" id="pageTitle">Dashboard</h5>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted" style="font-size:0.85rem;">Welcome, <span id="topbarUsername">HR</span></span>
+            <button class="btn btn-primary-custom btn-sm" onclick="showPanel('create')">
+                <i class="fas fa-plus me-1"></i> New Interview
+            </button>
+        </div>
+    </div>
+
+    <div class="page-content">
+
+        <!-- ==================== DASHBOARD PANEL ==================== -->
+        <div id="panel-dashboard" class="panel active">
+            <!-- Stats Row -->
+            <div class="row g-3 mb-4" id="statsRow">
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="stat-card">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-count" id="stat-total">—</div>
+                                <div class="stat-label">Total</div>
+                            </div>
+                            <div class="stat-icon" style="background:#EFF6FF;color:#2563EB;"><i class="fas fa-calendar-alt"></i></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="stat-card">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-count" id="stat-invited">—</div>
+                                <div class="stat-label">Invited</div>
+                            </div>
+                            <div class="stat-icon" style="background:#EFF6FF;color:#2563EB;"><i class="fas fa-envelope"></i></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="stat-card">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-count" id="stat-confirmed">—</div>
+                                <div class="stat-label">Confirmed</div>
+                            </div>
+                            <div class="stat-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="stat-card">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-count" id="stat-rescheduled">—</div>
+                                <div class="stat-label">Rescheduled</div>
+                            </div>
+                            <div class="stat-icon" style="background:#FFFBEB;color:#D97706;"><i class="fas fa-clock"></i></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="stat-card">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-count" id="stat-cancelled">—</div>
+                                <div class="stat-label">Cancelled</div>
+                            </div>
+                            <div class="stat-icon" style="background:#FEF2F2;color:#DC2626;"><i class="fas fa-times-circle"></i></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="stat-card">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-count" id="stat-completed">—</div>
+                                <div class="stat-label">Completed</div>
+                            </div>
+                            <div class="stat-icon" style="background:#F0F9FF;color:#0284C7;"><i class="fas fa-trophy"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upcoming Interviews -->
+            <div class="bg-white rounded-3 border p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="fw-bold mb-0">Upcoming Interviews</h6>
+                    <button class="btn btn-outline-primary btn-sm" onclick="showPanel('interviews')">View All</button>
+                </div>
+                <div id="upcomingTable"></div>
+            </div>
+        </div>
+
+        <!-- ==================== ALL INTERVIEWS PANEL ==================== -->
+        <div id="panel-interviews" class="panel">
+            <div class="bg-white rounded-3 border p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="fw-bold mb-0">All Interviews</h6>
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm" id="statusFilter" onchange="filterByStatus()">
+                            <option value="">All Statuses</option>
+                            <option value="INVITED">Invited</option>
+                            <option value="CONFIRMED">Confirmed</option>
+                            <option value="RESCHEDULED">Rescheduled</option>
+                            <option value="CANCELLED">Cancelled</option>
+                            <option value="COMPLETED">Completed</option>
+                        </select>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="loadAllInterviews()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="allInterviewsTable"></div>
+            </div>
+        </div>
+
+        <!-- ==================== CREATE INTERVIEW PANEL ==================== -->
+        <div id="panel-create" class="panel">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="bg-white rounded-3 border p-4">
+                        <h6 class="fw-bold mb-4"><i class="fas fa-plus-circle me-2 text-primary"></i>Schedule New Interview</h6>
+                        <div id="createAlert"></div>
+                        <form id="createInterviewForm">
+                            <!-- Candidate Section -->
+                            <div class="border rounded-2 p-3 mb-4">
+                                <h6 class="fw-semibold text-muted mb-3" style="font-size:0.82rem;text-transform:uppercase;letter-spacing:.5px;">
+                                    <i class="fas fa-user-graduate me-1"></i> Candidate Details
+                                </h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="candidateName" required placeholder="John Doe">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+                                        <input type="email" class="form-control" id="candidateEmail" required placeholder="john@example.com">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Phone</label>
+                                        <input type="text" class="form-control" id="candidatePhone" placeholder="+1 555 000 0000">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Timezone</label>
+                                        <input type="text" class="form-control" id="candidateTimezone" placeholder="Asia/Kolkata">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Interview Section -->
+                            <div class="border rounded-2 p-3 mb-4">
+                                <h6 class="fw-semibold text-muted mb-3" style="font-size:0.82rem;text-transform:uppercase;letter-spacing:.5px;">
+                                    <i class="fas fa-briefcase me-1"></i> Interview Details
+                                </h6>
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold">Position / Title <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="interviewTitle" required
+                                               placeholder="Senior Software Engineer - Technical Round">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Interviewer / Panel <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="interviewerId" required>
+                                            <option value="">Select interviewer...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Duration (minutes) <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="durationMinutes" required>
+                                            <option value="30">30 minutes</option>
+                                            <option value="45">45 minutes</option>
+                                            <option value="60" selected>60 minutes</option>
+                                            <option value="90">90 minutes</option>
+                                            <option value="120">120 minutes</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
+                                        <input type="date" class="form-control" id="interviewDate" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Time <span class="text-danger">*</span></label>
+                                        <input type="time" class="form-control" id="interviewTime" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold">Notes</label>
+                                        <textarea class="form-control" id="notes" rows="3"
+                                                  placeholder="Additional notes or instructions..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary-custom">
+                                    <span id="createSpinner" class="spinner-border spinner-border-sm me-2 d-none"></span>
+                                    <i class="fas fa-paper-plane me-2"></i>Schedule & Send Invitation
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="resetCreateForm()">
+                                    Reset
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== INTERVIEWERS PANEL ==================== -->
+        <div id="panel-interviewers" class="panel">
+            <div class="bg-white rounded-3 border p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="fw-bold mb-0">Interviewers</h6>
+                    <button class="btn btn-primary-custom btn-sm" data-bs-toggle="modal" data-bs-target="#addInterviewerModal">
+                        <i class="fas fa-plus me-1"></i> Add Interviewer
+                    </button>
+                </div>
+                <div id="interviewersTable"></div>
+            </div>
+        </div>
+
+        <!-- ==================== CANDIDATES PANEL ==================== -->
+        <div id="panel-candidates" class="panel">
+            <div class="bg-white rounded-3 border p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="fw-bold mb-0">Candidates</h6>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="loadCandidates()">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+                <div id="candidatesTable"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reschedule Modal -->
+<div class="modal fade" id="rescheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Reschedule Interview</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="rescheduleInterviewId">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">New Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="newDate">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">New Time <span class="text-danger">*</span></label>
+                    <input type="time" class="form-control" id="newTime">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Duration</label>
+                    <select class="form-select" id="newDuration">
+                        <option value="30">30 minutes</option>
+                        <option value="45">45 minutes</option>
+                        <option value="60" selected>60 minutes</option>
+                        <option value="90">90 minutes</option>
+                        <option value="120">120 minutes</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Reason (optional)</label>
+                    <input type="text" class="form-control" id="rescheduleReason" placeholder="Reason for rescheduling...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="submitReschedule()">
+                    <i class="fas fa-calendar-alt me-1"></i> Reschedule & Send Email
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Interviewer Modal -->
+<div class="modal fade" id="addInterviewerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Add Interviewer</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="iv_name">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" id="iv_email">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Department</label>
+                    <input type="text" class="form-control" id="iv_dept">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Working Hours</label>
+                    <input type="text" class="form-control" id="iv_hours" placeholder="09:00-18:00">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary-custom" onclick="submitAddInterviewer()">
+                    <i class="fas fa-user-plus me-1"></i> Add Interviewer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const API_BASE = '/api';
+    let authToken = localStorage.getItem('authToken');
+
+    // Redirect to login if not authenticated
+    if (!authToken) window.location.href = '/login.html';
+
+    // Set user info in UI
+    const username = localStorage.getItem('username') || 'HR';
+    document.getElementById('sidebarUsername').textContent = username;
+    document.getElementById('topbarUsername').textContent = username;
+
+    // Set min date for date inputs to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('interviewDate').min = today;
+
+    // Authenticated fetch helper
+    async function apiFetch(url, options = {}) {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`,
+            ...(options.headers || {})
+        };
+        const response = await fetch(url, { ...options, headers });
+        if (response.status === 401) {
+            localStorage.clear();
+            window.location.href = '/login.html';
+        }
+        return response.json();
+    }
+
+    // Show a specific panel
+    function showPanel(panelName) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+        document.getElementById('panel-' + panelName).classList.add('active');
+
+        const pageTitles = {
+            dashboard: 'Dashboard', interviews: 'All Interviews',
+            create: 'New Interview', interviewers: 'Interviewers', candidates: 'Candidates'
+        };
+        document.getElementById('pageTitle').textContent = pageTitles[panelName] || panelName;
+
+        // Load data for panel
+        if (panelName === 'dashboard') loadDashboard();
+        else if (panelName === 'interviews') loadAllInterviews();
+        else if (panelName === 'create') loadInterviewersForDropdown();
+        else if (panelName === 'interviewers') loadInterviewers();
+        else if (panelName === 'candidates') loadCandidates();
+    }
+
+    // ========================= DASHBOARD =========================
+    async function loadDashboard() {
+        await Promise.all([loadStats(), loadUpcomingInterviews()]);
+    }
+
+    async function loadStats() {
+        const data = await apiFetch(`${API_BASE}/interviews/stats`);
+        if (data.success) {
+            const s = data.data;
+            document.getElementById('stat-total').textContent = s.total || 0;
+            document.getElementById('stat-invited').textContent = s.invited || 0;
+            document.getElementById('stat-confirmed').textContent = s.confirmed || 0;
+            document.getElementById('stat-rescheduled').textContent = s.rescheduled || 0;
+            document.getElementById('stat-cancelled').textContent = s.cancelled || 0;
+            document.getElementById('stat-completed').textContent = s.completed || 0;
+        }
+    }
+
+    async function loadUpcomingInterviews() {
+        const data = await apiFetch(`${API_BASE}/interviews/upcoming`);
+        const container = document.getElementById('upcomingTable');
+        if (data.success && data.data.length > 0) {
+            container.innerHTML = buildInterviewTable(data.data);
+        } else {
+            container.innerHTML = '<p class="text-muted text-center py-3">No upcoming interviews.</p>';
+        }
+    }
+
+    // ========================= ALL INTERVIEWS =========================
+    async function loadAllInterviews() {
+        const status = document.getElementById('statusFilter')?.value || '';
+        let url = `${API_BASE}/interviews`;
+        if (status) url = `${API_BASE}/interviews/status/${status}`;
+
+        const data = await apiFetch(url);
+        const container = document.getElementById('allInterviewsTable');
+        if (data.success && data.data.length > 0) {
+            container.innerHTML = buildInterviewTable(data.data, true);
+        } else {
+            container.innerHTML = '<p class="text-muted text-center py-3">No interviews found.</p>';
+        }
+    }
+
+    function filterByStatus() { loadAllInterviews(); }
+
+    function buildInterviewTable(interviews, showActions = false) {
+        let html = `
+        <div class="table-responsive">
+        <table class="table table-hover interview-table align-middle">
+            <thead>
+                <tr>
+                    <th>Candidate</th>
+                    <th>Position</th>
+                    <th>Interviewer</th>
+                    <th>Date & Time</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th>Meet Link</th>
+                    ${showActions ? '<th>Actions</th>' : ''}
+                </tr>
+            </thead>
+            <tbody>`;
+
+        interviews.forEach(iv => {
+            const scheduled = new Date(iv.scheduledTime);
+            const dateStr = scheduled.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+            const timeStr = scheduled.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+
+            html += `<tr>
+                <td>
+                    <div class="fw-semibold">${iv.candidateName}</div>
+                    <div class="text-muted" style="font-size:0.78rem;">${iv.candidateEmail}</div>
+                </td>
+                <td>${iv.title}</td>
+                <td>
+                    <div>${iv.interviewerName}</div>
+                    <div class="text-muted" style="font-size:0.78rem;">${iv.interviewerDepartment || ''}</div>
+                </td>
+                <td>
+                    <div>${dateStr}</div>
+                    <div class="text-muted" style="font-size:0.78rem;">${timeStr}</div>
+                </td>
+                <td>${iv.durationMinutes} min</td>
+                <td><span class="badge-status badge-${iv.status.toLowerCase()}">${iv.status}</span></td>
+                <td class="meet-link">
+                    ${iv.meetingLink
+                        ? `<a href="${iv.meetingLink}" target="_blank" class="btn-meet">
+                               <i class="fas fa-video"></i>Join Meet
+                           </a>`
+                        : iv.status === 'CONFIRMED'
+                            ? `<span class="meet-pending"><i class="fas fa-spinner fa-spin"></i>Creating...</span>`
+                            : `<span class="text-muted" style="font-size:0.8rem;">—</span>`
+                    }
+                </td>
+                ${showActions ? `
+                <td>
+                    <div class="d-flex gap-1 align-items-center flex-wrap">
+                        ${iv.status !== 'CANCELLED' && iv.status !== 'COMPLETED' ? `
+                            <button class="btn btn-outline-warning btn-sm" title="Reschedule (HR override)"
+                                onclick="openReschedule(${iv.id})">
+                                <i class="fas fa-calendar-alt"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" title="Cancel"
+                                onclick="cancelInterview(${iv.id})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            ${!iv.aiStopped ? `
+                            <button class="btn-stop-ai" title="Stop AI email processing"
+                                onclick="stopAiProcessing(${iv.id})">
+                                <i class="fas fa-stop-circle"></i>Stop AI
+                            </button>` : `<span class="ai-stopped-badge"><i class="fas fa-ban"></i>AI Off</span>`}
+                        ` : ''}
+                    </div>
+                </td>` : ''}
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        return html;
+    }
+
+    // ========================= CREATE INTERVIEW =========================
+    async function loadInterviewersForDropdown() {
+        const data = await apiFetch(`${API_BASE}/interviewers`);
+        const select = document.getElementById('interviewerId');
+        select.innerHTML = '<option value="">Select interviewer...</option>';
+        if (data.success) {
+            data.data.forEach(iv => {
+                select.innerHTML += `<option value="${iv.id}">${iv.name} (${iv.department || iv.email})</option>`;
+            });
+        }
+    }
+
+    document.getElementById('createInterviewForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const alertBox = document.getElementById('createAlert');
+        const spinner = document.getElementById('createSpinner');
+        const submitBtn = this.querySelector('[type=submit]');
+
+        alertBox.innerHTML = '';
+        submitBtn.disabled = true;
+        spinner.classList.remove('d-none');
+
+        const date = document.getElementById('interviewDate').value;
+        const time = document.getElementById('interviewTime').value;
+        const scheduledTime = `${date}T${time}:00`;
+
+        const payload = {
+            candidateName:     document.getElementById('candidateName').value.trim(),
+            candidateEmail:    document.getElementById('candidateEmail').value.trim(),
+            candidatePhone:    document.getElementById('candidatePhone').value.trim(),
+            candidateTimezone: document.getElementById('candidateTimezone').value.trim() || 'UTC',
+            interviewerId:     parseInt(document.getElementById('interviewerId').value),
+            title:             document.getElementById('interviewTitle').value.trim(),
+            scheduledTime:     scheduledTime,
+            durationMinutes:   parseInt(document.getElementById('durationMinutes').value),
+            notes:             document.getElementById('notes').value.trim()
+        };
+
+        const data = await apiFetch(`${API_BASE}/interviews`, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+
+        if (data.success) {
+            alertBox.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Interview scheduled!</strong> Invitation email sent to ${data.data.candidateEmail}.
+                </div>`;
+            resetCreateForm();
+        } else {
+            let errMsg = data.message || 'Failed to create interview.';
+            if (data.data && typeof data.data === 'object') {
+                errMsg += '<br>' + Object.entries(data.data).map(([k,v]) => `${k}: ${v}`).join('<br>');
+            }
+            alertBox.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>${errMsg}</div>`;
+        }
+    });
+
+    function resetCreateForm() {
+        document.getElementById('createInterviewForm').reset();
+    }
+
+    // ========================= RESCHEDULE =========================
+    function openReschedule(interviewId) {
+        document.getElementById('rescheduleInterviewId').value = interviewId;
+        document.getElementById('newDate').min = today;
+        new bootstrap.Modal(document.getElementById('rescheduleModal')).show();
+    }
+
+    async function submitReschedule() {
+        const id = document.getElementById('rescheduleInterviewId').value;
+        const date = document.getElementById('newDate').value;
+        const time = document.getElementById('newTime').value;
+        const duration = document.getElementById('newDuration').value;
+        const reason = document.getElementById('rescheduleReason').value;
+
+        if (!date || !time) { alert('Please select new date and time.'); return; }
+
+        const payload = {
+            newScheduledTime: `${date}T${time}:00`,
+            durationMinutes: parseInt(duration),
+            reason: reason
+        };
+
+        const data = await apiFetch(`${API_BASE}/interviews/${id}/reschedule`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        });
+
+        bootstrap.Modal.getInstance(document.getElementById('rescheduleModal')).hide();
+        if (data.success) {
+            showToast('Interview rescheduled successfully!', 'success');
+            loadAllInterviews();
+        } else {
+            showToast(data.message || 'Reschedule failed.', 'danger');
+        }
+    }
+
+    // ========================= CANCEL =========================
+    async function cancelInterview(id) {
+        if (!confirm('Are you sure you want to cancel this interview? A cancellation email will be sent.')) return;
+
+        const data = await apiFetch(`${API_BASE}/interviews/${id}/cancel`, { method: 'PUT' });
+        if (data.success) {
+            showToast('Interview cancelled.', 'success');
+            loadAllInterviews();
+        } else {
+            showToast(data.message || 'Cancel failed.', 'danger');
+        }
+    }
+
+    // ========================= STOP AI =========================
+    async function stopAiProcessing(id) {
+        if (!confirm('Stop AI email processing for this interview?\n\nThe AI will no longer poll for candidate replies or send automated emails. HR can still manually reschedule or cancel.')) return;
+
+        const data = await apiFetch(`${API_BASE}/interviews/${id}/stop-ai`, { method: 'PUT' });
+        if (data.success) {
+            showToast('AI processing stopped. No further automated emails will be sent.', 'warning');
+            loadAllInterviews();
+        } else {
+            showToast(data.message || 'Failed to stop AI.', 'danger');
+        }
+    }
+
+    // ========================= INTERVIEWERS =========================
+    async function loadInterviewers() {
+        const data = await apiFetch(`${API_BASE}/interviewers/all`);
+        const container = document.getElementById('interviewersTable');
+        if (!data.success || data.data.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center py-3">No interviewers found.</p>';
+            return;
+        }
+        let html = `<div class="table-responsive"><table class="table table-hover interview-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Hours</th><th>Status</th></tr></thead><tbody>`;
+        data.data.forEach(iv => {
+            html += `<tr>
+                <td class="fw-semibold">${iv.name}</td>
+                <td>${iv.email}</td>
+                <td>${iv.department || '—'}</td>
+                <td>${iv.workingHours || '—'}</td>
+                <td><span class="badge ${iv.active ? 'bg-success' : 'bg-secondary'}">${iv.active ? 'Active' : 'Inactive'}</span></td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    }
+
+    async function submitAddInterviewer() {
+        const payload = {
+            name: document.getElementById('iv_name').value.trim(),
+            email: document.getElementById('iv_email').value.trim(),
+            department: document.getElementById('iv_dept').value.trim(),
+            workingHours: document.getElementById('iv_hours').value.trim() || '09:00-18:00'
+        };
+
+        const data = await apiFetch(`${API_BASE}/interviewers`, {
+            method: 'POST', body: JSON.stringify(payload)
+        });
+
+        bootstrap.Modal.getInstance(document.getElementById('addInterviewerModal')).hide();
+        if (data.success) {
+            showToast('Interviewer added!', 'success');
+            loadInterviewers();
+        } else {
+            showToast(data.message || 'Failed to add interviewer.', 'danger');
+        }
+    }
+
+    // ========================= CANDIDATES =========================
+    async function loadCandidates() {
+        const data = await apiFetch(`${API_BASE}/candidates`);
+        const container = document.getElementById('candidatesTable');
+        if (!data.success || data.data.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center py-3">No candidates found.</p>';
+            return;
+        }
+        let html = `<div class="table-responsive"><table class="table table-hover interview-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Timezone</th><th>Joined</th></tr></thead><tbody>`;
+        data.data.forEach(c => {
+            html += `<tr>
+                <td class="fw-semibold">${c.name}</td>
+                <td>${c.email}</td>
+                <td>${c.phone || '—'}</td>
+                <td>${c.timezone || '—'}</td>
+                <td>${new Date(c.createdAt).toLocaleDateString()}</td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    }
+
+    // ========================= UTILS =========================
+    function showToast(message, type = 'success') {
+        const toastHtml = `
+            <div class="position-fixed top-0 end-0 p-3" style="z-index:9999;">
+                <div class="toast show align-items-center text-white bg-${type} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            </div>`;
+        const div = document.createElement('div');
+        div.innerHTML = toastHtml;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 4000);
+    }
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = '/login.html';
+    }
+
+    // Initial load
+    loadDashboard();
+</script>
+</body>
+</html>
